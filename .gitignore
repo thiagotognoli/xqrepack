@@ -1,0 +1,8 @@
+r3600-raw-img.bin
+orig-firmwares/*.bin
+ubifs-root/
+*+SSH.zip
+*+SSH+MI.zip
+*+SSH+MI+opt.zip
+*+SSH+opt.zip
+orig-firmwares/ubifs-root/miwifi_ra72_all_11c68_1.0.95.bin

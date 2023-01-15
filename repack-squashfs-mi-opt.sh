@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# unpack, modify and re-pack the Xiaomi R3600 firmware
+# unpack, modify and re-pack the Xiaomi RM1800 firmware
 # removes checks for release channel before starting dropbear
-# remove crap xiaomeme stuffs
+# retain crap xiaomeme stuffs
 # 2020.07.20  darell tan
 # 
 
@@ -29,12 +29,16 @@ unsquashfs -f -d "$FSDIR" "$IMG"
 
 >&2 echo "patching squashfs..."
 
+# create /opt dir
+mkdir "$FSDIR/opt"
+chmod 755 "$FSDIR/opt"
+
 # add global firmware language packages
 cp -R ./language-packages/opkg-info/. $FSDIR/usr/lib/opkg/"info"
 cp -R ./uci-defaults/. $FSDIR/etc/uci-defaults
 cp -R ./base-translation/. $FSDIR/usr/lib/lua/luci/i18n
 cat ./language-packages/languages.txt >>$FSDIR/usr/lib/opkg/status
-chmod 755 $FSDIR/usr/lib/opkg/info/luci-i18n-*.prerm
+chmod 755 $FSDIR/usr/lib/opkg/info/luci-i18n-english.prerm
 chmod 755 $FSDIR/etc/uci-defaults/luci-i18n-*
 
 # translate xiaomi stuff to English
@@ -53,8 +57,8 @@ sed -i 's/>设置/">Settings/g' "$FSDIR/usr/lib/lua/luci/view/web/apindex.htm"
 sed -i 's/小米AIoT路由器 AX3600/Router AIoT Mi AX3600/g' "$FSDIR/usr/lib/lua/luci/view/web/index.htm"
 sed -i 's/小米AIoT路由器 AX3600/Router AIoT Mi AX3600/g' "$FSDIR/usr/lib/lua/luci/view/web/apindex.htm"
 
-sed -i "s/开启后，2.4G和5G将合并显示为同一个名称，路由器将优先为终端选择5G网络。合并名称后部分终端可能离线，需重新连接。/When the feature is on, 2.4G and 5G networks will share a name. The router will choose the best available signal. For example, it will switch to 5G network if the device is close, and to 2.4G network if it's far away. Brief interruptions may occur during the switch./g" "$FSDIR/usr/lib/lua/luci/view/web/setting/wifi.htm"
-sed -i "s/开启后，2.4G和5G将合并显示为同一个名称，路由器将优先为终端选择5G网络。合并名称后部分终端可能离线，需重新连接。/When the feature is on, 2.4G and 5G networks will share a name. The router will choose the best available signal. For example, it will switch to 5G network if the device is close, and to 2.4G network if it's far away. Brief interruptions may occur during the switch./g" "$FSDIR/usr/lib/lua/luci/view/web/apsetting/wifi.htm"
+sed -i "s/开启后，2.4G和5G将合并显示为同一个名称，路由器将优先为终端选择5G网络。合并名称后部分终端可能离线，需重新连接。/When the feature is on, 2.4G and 5G networks will share a name. The router will choose the best available signal. For example, it will switch to 5G network if the device is close, and to 2.4G network it's far away. Brief interruptions may occur during the switch./g" "$FSDIR/usr/lib/lua/luci/view/web/setting/wifi.htm"
+sed -i "s/开启后，2.4G和5G将合并显示为同一个名称，路由器将优先为终端选择5G网络。合并名称后部分终端可能离线，需重新连接。/When the feature is on, 2.4G and 5G networks will share a name. The router will choose the best available signal. For example, it will switch to 5G network if the device is close, and to 2.4G network it's far away. Brief interruptions may occur during the switch./g" "$FSDIR/usr/lib/lua/luci/view/web/apsetting/wifi.htm"
 
 sed -i "s/Wi-Fi 5 兼容模式/Wi-Fi 5 (802.11ac) compatibility mode/g" "$FSDIR/usr/lib/lua/luci/view/web/setting/wifi.htm"
 sed -i "s/Wi-Fi 5 兼容模式/Wi-Fi 5 (802.11ac) compatibility mode/g" "$FSDIR/usr/lib/lua/luci/view/web/apsetting/wifi.htm"
@@ -88,7 +92,7 @@ sed -i 's/channel=.*/channel=release2/' "$FSDIR/etc/init.d/dropbear"
 sed -i 's/flg_ssh=.*/flg_ssh=1/' "$FSDIR/etc/init.d/dropbear"
 
 # mark web footer so that users can confirm the right version has been flashed
-sed -i 's/romVersion%>/& xqrepack-translated/;' "$FSDIR/usr/lib/lua/luci/view/web/inc/footer.htm"
+sed -i 's/romVersion%>/& xqrepack-mi-opt-translated/;' "$FSDIR/usr/lib/lua/luci/view/web/inc/footer.htm"
 
 # stop resetting root password
 sed -i '/set_user(/a return 0' "$FSDIR/etc/init.d/system"
@@ -120,9 +124,9 @@ NVRAM
 sed -i "s@root:[^:]*@root:${ROOTPW}@" "$FSDIR/etc/shadow"
 
 # stop phone-home in web UI
-cat <<JS >> "$FSDIR/www/js/miwifi-monitor.js"
-(function(){ if (typeof window.MIWIFI_MONITOR !== "undefined") window.MIWIFI_MONITOR.log = function(a,b) {}; })();
-JS
+#cat <<JS >> "$FSDIR/www/js/miwifi-monitor.js"
+#(function(){ if (typeof window.MIWIFI_MONITOR !== "undefined") window.MIWIFI_MONITOR.log = function(a,b) {}; })();
+#JS
 
 # add xqflash tool into firmware for easy upgrades
 cp xqflash "$FSDIR/sbin"
@@ -130,29 +134,32 @@ chmod 0755      "$FSDIR/sbin/xqflash"
 chown root:root "$FSDIR/sbin/xqflash"
 
 # dont start crap services
-for SVC in stat_points statisticsservice \
-		datacenter \
-		smartcontroller \
-		plugincenter plugin_start_script.sh cp_preinstall_plugins.sh; do
-	rm -f $FSDIR/etc/rc.d/[SK]*$SVC
-done
+# for SVC in stat_points statisticsservice \
+#		datacenter \
+#		smartcontroller \
+#		plugincenter plugin_start_script.sh cp_preinstall_plugins.sh; do
+#	rm -f $FSDIR/etc/rc.d/[SK]*$SVC
+# done
 
 # prevent stats phone home & auto-update
-for f in StatPoints mtd_crash_log logupload.lua otapredownload wanip_check.sh; do > $FSDIR/usr/sbin/$f; done
+# for f in StatPoints mtd_crash_log logupload.lua otapredownload wanip_check.sh; do > $FSDIR/usr/sbin/$f; done
 
-rm -f $FSDIR/etc/hotplug.d/iface/*wanip_check
+# prevent auto-update
+> $FSDIR/usr/sbin/otapredownload
 
-for f in wan_check messagingagent.sh; do
-	sed -i '/start_service(/a return 0' $FSDIR/etc/init.d/$f
-done
+# rm -f $FSDIR/etc/hotplug.d/iface/*wanip_check
+
+# for f in wan_check messagingagent.sh; do
+# sed -i '/start_service(/a return 0' $FSDIR/etc/init.d/$f
+# done
 
 # cron jobs are mostly non-OpenWRT stuff
-for f in $FSDIR/etc/crontabs/*; do
-	sed -i 's/^/#/' $f
-done
+#for f in $FSDIR/etc/crontabs/*; do
+#	sed -i 's/^/#/' $f
+# done
 
 # as a last-ditch effort, change the *.miwifi.com hostnames to localhost
-sed -i 's@\w\+.miwifi.com@localhost@g' $FSDIR/etc/config/miwifi
+# sed -i 's@\w\+.miwifi.com@localhost@g' $FSDIR/etc/config/miwifi
 
 # get hardware name
 HWNAME=`sed -n "/option\s\+HARDWARE/ s/.*'\(.*\)'/\1/g p" $FSDIR/usr/share/xiaoqiang/xiaoqiang_version`
@@ -176,4 +183,3 @@ done
 >&2 echo "repacking squashfs..."
 rm -f "$IMG.new"
 mksquashfs "$FSDIR" "$IMG.new" -comp xz -b 256K -no-xattrs
-

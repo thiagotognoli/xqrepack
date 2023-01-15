@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# unpack, modify and re-pack the Xiaomi R3600 firmware
+# unpack, modify and re-pack the Xiaomi RM1800 firmware
 # removes checks for release channel before starting dropbear
 # remove crap xiaomeme stuffs
 # 2020.07.20  darell tan
@@ -28,6 +28,10 @@ rm -f "$FSDIR/foo"
 unsquashfs -f -d "$FSDIR" "$IMG"
 
 >&2 echo "patching squashfs..."
+
+# create /opt dir
+mkdir "$FSDIR/opt"
+chmod 755 "$FSDIR/opt"
 
 # add global firmware language packages
 cp -R ./language-packages/opkg-info/. $FSDIR/usr/lib/opkg/"info"
@@ -76,6 +80,8 @@ sed -i 's/时区设置/Region and Time/g' "$FSDIR/usr/lib/lua/luci/view/web/inc/
 
 sed -i "s/开启此功能，路由器可自动发现支持畅快连的未初始化Wi-Fi设备，通过米家APP快速配网；修改路由器密码也将自动同步给支持畅快连的设备。/With this feature enabled, the router can automatically discover uninitialized Wi-Fi devices that support Xiaomi Easy Connect and quickly pair them with the network through the Mi Home App; changing the router's password will also automatically sync with devices that support Xiaomi Easy Connect./g" "$FSDIR/usr/lib/lua/luci/view/web/setting/wifi.htm"
 
+sed -i "s/路由器正常工作情况下建议使用小米WiFi App进行安装，当安装失败或需要降级到前一版本时使用手动安装插件。/When the router is working normally, it is recommended to use the Xiaomi WiFi App to install it. When the installation fails or needs to be downgraded to the previous version, use the manual installation plug-in./g" "$FSDIR/usr/lib/lua/luci/view/web/setting/upgrade.htm"
+
 sed -i 's/路由状态/Status/g' "$FSDIR/usr/lib/lua/luci/view/web/apindex.htm"
 sed -i 's/路由状态/Status/g' "$FSDIR/usr/lib/lua/luci/view/web/index.htm"
 sed -i 's/常用设置/Default Settings/g' "$FSDIR/usr/lib/lua/luci/view/web/apindex.htm"
@@ -83,12 +89,13 @@ sed -i 's/常用设置/Default Settings/g' "$FSDIR/usr/lib/lua/luci/view/web/ind
 sed -i 's/高级设置/Advanced Settingss/g' "$FSDIR/usr/lib/lua/luci/view/web/apindex.htm"
 sed -i 's/高级设置/Advanced Settings/g' "$FSDIR/usr/lib/lua/luci/view/web/index.htm"
 
+
 # modify dropbear init
 sed -i 's/channel=.*/channel=release2/' "$FSDIR/etc/init.d/dropbear"
 sed -i 's/flg_ssh=.*/flg_ssh=1/' "$FSDIR/etc/init.d/dropbear"
 
 # mark web footer so that users can confirm the right version has been flashed
-sed -i 's/romVersion%>/& xqrepack-translated/;' "$FSDIR/usr/lib/lua/luci/view/web/inc/footer.htm"
+sed -i 's/romVersion%>/& acexqr-opt-eng/;' "$FSDIR/usr/lib/lua/luci/view/web/inc/footer.htm"
 
 # stop resetting root password
 sed -i '/set_user(/a return 0' "$FSDIR/etc/init.d/system"
@@ -176,4 +183,3 @@ done
 >&2 echo "repacking squashfs..."
 rm -f "$IMG.new"
 mksquashfs "$FSDIR" "$IMG.new" -comp xz -b 256K -no-xattrs
-
